@@ -1,0 +1,4 @@
+export FOO=BAR
+export BAZ=QUUX
+PATH_add .tools-subdirectory
+export LOREM_IPSUM

@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Ensure propagation of exit codes
+set -eu
+{{ if .IsolateModule -}}
+# We must reference the modfile without changing the working directory
+SCRIPT_LOCATION="$(dirname $(readlink -f -- "${0}"))"
+{{ end -}}
+# Enable script debugging
+DEBUG_GOTOOL_SCRIPT="${DEBUG_GOTOOL_SCRIPT:-}"
+[ -z "${DEBUG_GOTOOL_SCRIPT:-}" ] || {
+  set -x
+}
+# Call appropriate go tool and pass all argument directly to the tool
+go tool {{ if .IsolateModule -}}--modfile=${SCRIPT_LOCATION}/{{- .CommandName -}}.mod{{- end }} {{ .CommandName }} "${@}"

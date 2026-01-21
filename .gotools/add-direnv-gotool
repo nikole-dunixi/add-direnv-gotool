@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Ensure propagation of exit codes
+set -eu
+# We must reference the modfile without changing the working directory
+SCRIPT_LOCATION="$(dirname $(readlink -f -- "${0}"))"
+# Enable script debugging
+DEBUG_GOTOOL_SCRIPT="${DEBUG_GOTOOL_SCRIPT:-}"
+[ -z "${DEBUG_GOTOOL_SCRIPT:-}" ] || {
+  set -x
+}
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+# This is a modified version of the script we would normally use
+# except it short-circuits to `go run` to speed up iteration with
+# feedback during development
+go run "${PROJECT_ROOT}" "${@}"

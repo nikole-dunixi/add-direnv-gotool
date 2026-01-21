@@ -1,0 +1,18 @@
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - task watch
+
+  test:
+    desc: Execute all tests
+    cmds:
+      - clear
+      - go test -v ./...
+  
+  watch:
+    desc: Watch and execute tests upon filesystem changes
+    cmds:
+     - clear
+     - gow -e input,output test -v ./...
