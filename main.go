@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -64,6 +65,13 @@ func main() {
 		)
 	}
 
+	if err := HandleReadme(ctx, toolsDirectory); err != nil {
+		sloghelper.FatalContext(ctx, "could not handle readme in go tools directory",
+			slog.Any("err", err),
+			slog.String("toolsDirectory", toolsDirectory),
+		)
+	}
+
 	if isolateModule {
 		moduleFilepath, err := gocmd.ModFilename(toolsDirectory, commandName)
 		if err != nil {
@@ -98,6 +106,18 @@ func main() {
 	}
 
 	slog.InfoContext(ctx, "success")
+}
+
+func HandleReadme(ctx context.Context, toolsDirectory string) error {
+	readmeFile, err := os.Create(path.Join(toolsDirectory, "readme.md"))
+	if err != nil {
+		return fmt.Errorf("could not open the readme file for writing: %w", err)
+	}
+	defer readmeFile.Close()
+	if err := assets.WriteReadme(readmeFile); err != nil {
+		return fmt.Errorf("could not write contents to readme")
+	}
+	return nil
 }
 
 func HandleEnvRC(envrcPath, binaryName, targetDirectory string) error {

@@ -7,6 +7,9 @@ import (
 	"text/template"
 )
 
+//go:embed readme.md
+var readmeContents string
+
 //go:embed command.tmpl
 var commandTemplateContents string
 
@@ -23,4 +26,9 @@ func WriteScriptContents(w io.Writer, args ScriptArgs) error {
 		return fmt.Errorf("could not populate script contents: %w", err)
 	}
 	return nil
+}
+
+func WriteReadme(w io.Writer) error {
+	_, err := io.WriteString(w, readmeContents)
+	return err
 }

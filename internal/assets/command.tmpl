@@ -10,5 +10,68 @@ DEBUG_GOTOOL_SCRIPT="${DEBUG_GOTOOL_SCRIPT:-}"
 [ -z "${DEBUG_GOTOOL_SCRIPT:-}" ] || {
   set -x
 }
-# Call appropriate go tool and pass all argument directly to the tool
-go tool {{ if .IsolateModule -}}--modfile=${SCRIPT_LOCATION}/{{- .CommandName -}}.mod{{- end }} {{ .CommandName }} "${@}"
+
+function dbgecho() {
+  [ -z "${DEBUG_GOTOOL_SCRIPT:-}" ] || {
+    echo "${@}" 1>&2
+  }
+}
+
+function hash_env_state() {
+  {{- if .IsolateModule }}
+  local gomod_file=${SCRIPT_LOCATION}/{{- .CommandName -}}.mod
+  local gosum_file=${SCRIPT_LOCATION}/{{- .CommandName -}}.sum
+  {{- else }}
+  local gomod_file="$(go env GOMOD)"
+  local gosum_file="$(dirname ${gomod_file})/go.sum"
+  {{- end }}
+  {
+    go env
+    cat "${gomod_file}"
+    cat "${gosum_file}"
+  } | sha256sum | cut -f1 -d' '
+}
+
+function lookup_cached_bin_path() {
+  local cache_filename="${1}"
+  local cache_bin_key="${2}"
+  # Check if the cachefile has an entry
+  cache_bin_path="$(grep ${cache_bin_key} ${cache_filename} | cut -f2 -d=)"
+  # If the hash exists, then we check if it's still valid.
+  # If it is invalid then we remove it from the cache.
+  # If it is valid, then we print it out
+  if [[ ! -z "${cache_bin_path}" ]]; then
+    dbgecho "we have a cache hit: ${cache_bin_path}"
+    if [ -f "${cache_bin_path}" ]; then
+      dbgecho "the cache hit is still valid, use it"
+      echo "${cache_bin_path}"
+    else
+      dbgecho "the cache hit is stale, removing"
+      sed -i "/${cache_bin_key}=/d" "${cache_filename}"
+    fi
+  else
+    dbgecho "we have a cache miss"
+  fi
+}
+
+cache_directory=${XDG_CACHE_HOME:-$HOME/.cache}
+cache_filename="${cache_directory}/{{- .CommandName -}}-cache.txt"
+[ -f "${cache_filename}" ] || {
+  touch "${cache_filename}"
+}
+cache_bin_key="$(hash_env_state)"
+cache_bin_path="$(lookup_cached_bin_path "${cache_filename}" "${cache_bin_key}")"
+if [[ -z "${cache_bin_path}" ]]; then
+  cache_bin_path="$(go tool {{ if .IsolateModule -}}--modfile=${SCRIPT_LOCATION}/{{- .CommandName -}}.mod{{- end }} -n {{ .CommandName }})"
+  echo "${cache_bin_key}=${cache_bin_path}" >> "${cache_filename}"
+fi
+
+# We are mutating the script's arguments and dropping the first.
+# The first argument is always the executable that has been invoked
+# which is not needed or useful when re-delegating execution to
+# another executable
+shift
+# We replace the current shell process with the specficied
+# command. The command is given all the arguments that this
+# script received, after mutation.
+exec "${cache_bin_path}" ${@}
