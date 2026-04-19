@@ -66,11 +66,6 @@ if [[ -z "${cache_bin_path}" ]]; then
   echo "${cache_bin_key}=${cache_bin_path}" >> "${cache_filename}"
 fi
 
-# We are mutating the script's arguments and dropping the first.
-# The first argument is always the executable that has been invoked
-# which is not needed or useful when re-delegating execution to
-# another executable
-shift
 # We replace the current shell process with the specficied
 # command. The command is given all the arguments that this
 # script received, after mutation.
